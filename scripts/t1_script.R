@@ -193,7 +193,7 @@ p1 <- ggplot() +
   coord_sf(xlim = xlim_zoom, ylim = ylim_zoom, expand = FALSE) +
   theme_void() +
   labs(title = "% Población etaria 25–39 por zona censal",
-       subtitle = "Provincia de Santiago + San Bernardo + Puente Alto")
+       subtitle = "Gran Santiago")
 
 p2 <- ggplot() +
   geom_sf(data = sf_ind, aes(fill = tam_med_hogar), color = "white", size = 0.25) +
@@ -215,7 +215,7 @@ p2 <- ggplot() +
   coord_sf(xlim = xlim_zoom, ylim = ylim_zoom, expand = FALSE) +
   theme_void() +
   labs(title = "Tamaño medio del hogar por zona censal",
-       subtitle = "Provincia de Santiago + San Bernardo + Puente Alto")
+       subtitle = "Gran Santiago")
 
 p1; p2
 
@@ -244,7 +244,7 @@ mapa_bi <- ggplot() +
   coord_sf(xlim = xlim_zoom, ylim = ylim_zoom, expand = FALSE) +
   theme_void() +
   labs(title = "% Poblacion etaria 25–39 vs Tamaño medio del hogar",
-       subtitle = "Provincia de Santiago + San Bernardo + Puente Alto")
+       subtitle = "Gran Santiago")
 
 leyenda_bi <- bi_legend(
   pal = "DkBlue", dim = 3,
