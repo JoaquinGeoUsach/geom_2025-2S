@@ -5,6 +5,8 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
+------------------------------------------------------------------------
+
 # 1. Introducción
 
 El Gran Santiago, núcleo urbano más densamente poblado de Chile, constituye el eje económico, político y social del país. Según los primeros resultados del Censo 2024, la Región Metropolitana concentra 7 400 741 personas, equivalentes al 40 % de la población nacional (IDE Chile).
@@ -23,7 +25,7 @@ Mediante análisis espacial y estadístico a escala de zonas censales, se busca 
 
 ## 1.1 Objetivo general
 
-El objetivo principal es representar la distribución espacial de la relación entre la población joven-adulta (25–39 años) —grupo clave por su relevancia económica y reproductiva— y el tamaño medio de los hogares, indicador asociado a condiciones de vivienda, densidad habitacional y estructura familiar.
+El objetivo principal es representar la distribución espacial de la relación entre la población joven-adulta entre 25-39 años (grupo clave por su relevancia económica y reproductiva) junto con el tamaño medio de los hogares, indicador asociado a condiciones de vivienda, densidad habitacional y estructura familiar.
 
 ## 1.2 Objetivos especificos
 
@@ -37,7 +39,7 @@ Los objetivos específicos del presente estudio son:
 
 -   **Analizar la relación bivariada** entre el porcentaje de población joven-adulta y el tamaño medio del hogar mediante técnicas de clasificación espacial (biscale), identificando áreas donde ambas condiciones se superponen, analizandolo a través de un mapa bivariado.
 
--   **Interpretar los patrones espaciales resultantes**, destacando tendencias centro–periferia y su relevancia para la planificación urbana y habitacional en el Gran Santiago.
+-   **Interpretar los patrones espaciales resultantes**, destacando tendencias centro-periferia y su relevancia para la planificación urbana y habitacional en el Gran Santiago.
 
 ------------------------------------------------------------------------
 
@@ -92,7 +94,7 @@ Para calcular los indicadores deseados se utilizó la información contenida en 
 
 -   **public.personas:** contiene registros individuales con variables demográficas. En este estudio se utilizaron principalmente:
 
-    -   **p09:** edad del individuo, expresada en años cumplidos, variable base para la estimación del porcentaje de población en el rango 25–39 años.
+    -   **p09:** edad del individuo, expresada en años cumplidos, variable base para la estimación del porcentaje de población en el rango 25-39 años.
 
     -   **p07:** tipo de residencia o condición de institucionalización, que permitió excluir del análisis a personas en establecimientos colectivos (códigos 17, 18, 19).
 
@@ -265,7 +267,9 @@ theme_joaquín <- function() {
 
 # 3. Resultados y Análisis
 
-De manera preliminar se realizan histogramas para cada indicador con el fin de poder visualizar los datos enfocandónos solo en la distribución de cada indicador en su respectiva unidad de medida sin considerar la variable espacial.
+## 3.1 Histogramas de indicadores
+
+De manera preliminar se realizan histogramas para cada indicador con el fin de poder visualizar los datos enfocandónos solo en la distribución de cada indicador en su respectiva unidad de medida sin considerar la variable espacial. Los histogramas presentados permiten observar la distribución de las dos variables principales analizadas a nivel de zona censal urbana del Gran Santiago: el porcentaje de población joven-adulta (25-39 años) y el tamaño medio del hogar.
 
 ```{r histogramas, fig.width=12, fig.height=5, message=FALSE, warning=FALSE}
 df_plot <- sf_ind |>
@@ -294,21 +298,21 @@ p_hist_hogar <- ggplot(df_plot, aes(x = tam_med_hogar)) +
 cowplot::plot_grid(p_hist_25_39, p_hist_hogar, ncol = 2, rel_widths = c(1, 1))
 ```
 
-Los histogramas presentados permiten observar la distribución de las dos variables principales analizadas a nivel de zona censal urbana del Gran Santiago: el porcentaje de población joven-adulta (25–39 años) y el tamaño medio del hogar.
+#### 3.1.1 Distribución del porcentaje de población 25–39 años
 
-#### **1. Distribución del porcentaje de población 25–39 años**
+La distribución presenta una asimetría positiva, es decir que la mayoría de las zonas censales contienen bajos valores de porcentaje de población joven, concentrándose la mayoría de las zonas censales entre el 15 % y 25 % de población en este grupo etario, con un pico modal cercano al 20 %. Esto sugiere que en la mayor parte del Gran Santiago la proporción de población joven-adulta es relativamente moderada, mientras que las zonas con porcentajes superiores al 35-40 % son escasas y corresponden probablemente a sectores con fuerte presencia de adultos jóvenes, como áreas de renovación urbana, zonas centrales o comunas con alta migración laboral reciente (p. ej. Santiago Centro, Ñuñoa o Independencia).
 
-La distribución presenta una asimetría positiva, es decir que la mayoría de las zonas censales contienen bajos valores de porcentaje de población joven, concentrándose la mayoría de las zonas censales entre el 15 % y 25 % de población en este grupo etario, con un pico modal cercano al 20 %.\
-Esto sugiere que en la mayor parte del Gran Santiago la proporción de población joven-adulta es relativamente moderada, mientras que las zonas con porcentajes superiores al 35–40 % son escasas y corresponden probablemente a sectores con fuerte presencia de adultos jóvenes, como áreas de renovación urbana, zonas centrales o comunas con alta migración laboral reciente (p. ej. Santiago Centro, Ñuñoa o Independencia).
+#### 3.1.2 Distribución del tamaño medio del hogar
 
-#### 2. Distribución del tamaño medio del hogar
-
-El tamaño medio del hogar muestra una distribución levemente asimétrica hacia la izquierda, concentrando la mayor parte de las zonas censales entre 2,5 y 3,5 personas por hogar, con un valor modal cercano a 3 personas.\
-Esto refleja una tendencia general hacia hogares de tamaño reducido, coherente con las dinámicas urbanas actuales del Gran Santiago: aumento de hogares unipersonales, parejas sin hijos y fragmentación familiar.
+El tamaño medio del hogar muestra una distribución levemente asimétrica hacia la izquierda, concentrando la mayor parte de las zonas censales entre 2,5 y 3,5 personas por hogar, con un valor modal cercano a 3 personas. Esto refleja una tendencia general hacia hogares de tamaño reducido, coherente con las dinámicas urbanas actuales del Gran Santiago: aumento de hogares unipersonales, parejas sin hijos y fragmentación familiar.
 
 Sin embargo, la presencia de un número menor de zonas con promedios superiores a 4 personas por hogar sugiere la persistencia de núcleos familiares más extensos en algunas zonas censales del Gran Santiago.
 
 Habiendo realizado este análisis preliminar seguimos con la visualización espacial de cada uno de los indicadores para poder profundizar el análisis dentro de las zonas urbanas del Gran Santiago.
+
+## 3.2 Cartografías
+
+#### 3.2.1 Porcentaje de población entre 25-39 años por zona censal, Gran Santiago
 
 ```{r mapa_pct25_39, fig.width=13, fig.height=8, message=FALSE, warning=FALSE}
 ggplot(sf_ind) +
@@ -330,15 +334,16 @@ ggplot(sf_ind) +
   theme_joaquín()
 ```
 
-El mapa de distribución por zona censal muestra una clara concentración de la población joven-adulta (25–39 años) en el área central del Gran Santiago, especialmente en torno a la comuna de Santiago, donde destacan las zonas censales del sector nororiente como las de Santa Isabel, Parque Almagro y Bellas Artes.\
-Estas áreas presentan los valores más altos del indicador, superando el 40 % e incluso alcanzando rangos cercanos al 60 %, lo que evidencia una fuerte presencia de población joven-adulta asociada a procesos de renovación urbana y densificación residencial.
+El mapa de distribución por zona censal muestra una clara concentración de la población joven-adulta (25–39 años) en el área central del Gran Santiago, especialmente en torno a la comuna de Santiago, donde destacan las zonas censales del sector nororiente como las de Santa Isabel, Parque Almagro y Bellas Artes. Estas áreas presentan los valores más altos del indicador, superando el 40 % e incluso alcanzando rangos cercanos al 60 %, lo que evidencia una fuerte presencia de población joven-adulta asociada a procesos de renovación urbana y densificación residencial.
 
 En continuidad espacial, las comunas de Providencia, Ñuñoa, San Miguel e Independencia también exhiben valores relativamente elevados, aunque en menor magnitud que el núcleo central. Estas zonas corresponden a sectores consolidados del área metropolitana, con buena accesibilidad al transporte público, oferta de servicios y equipamientos urbanos, lo que atrae a población joven-adulta en edad laboral.
 
 Hacia la periferia, la proporción de población joven-adulta disminuye de manera notoria, predominando zonas censales con valores bajo el 25 %. Sin embargo, se observan algunos núcleos atípicos de mayor concentración en sectores específicos de Puente Alto y Renca, donde probablemente inciden factores como la expansión de proyectos habitacionales recientes o la llegada de nuevos hogares jóvenes en búsqueda de viviendas más asequibles.
 
-En conjunto, la distribución espacial del indicador revela un patrón centro–periferia inverso, donde la población joven se concentra en los sectores centrales y pericentrales, mientras que la periferia metropolitana presenta una estructura demográfica más envejecida o familiarmente consolidada.\
+En conjunto, la distribución espacial del indicador revela un patrón centro-periferia inverso, donde la población joven se concentra en los sectores centrales y pericentrales, mientras que la periferia metropolitana presenta una estructura demográfica más envejecida o familiarmente consolidada.\
 Este comportamiento es coherente con las transformaciones residenciales observadas en las últimas décadas en el Gran Santiago, caracterizadas por la reurbanización de los barrios centrales y la fragmentación socioespacial de la juventud urbana.
+
+#### 3.2.2 Tamaño medio de hogar por zona censal, Gran Santiago
 
 ```{r mapa_tam_hogar, fig.width=13, fig.height=8, message=FALSE, warning=FALSE}
 ggplot(sf_ind) +
@@ -362,18 +367,23 @@ ggplot(sf_ind) +
 
 El mapa de distribución del tamaño medio del hogar evidencia un patrón espacial heterogéneo dentro del Gran Santiago, donde se observan diferencias significativas entre las comunas del oriente, el centro y las periferias de la ciudad.
 
-Las zonas con los valores más altos de personas por hogar (superiores a 4,3 personas en promedio) se concentran en el sector oriente, destacando las zonas censales del norte de Las Condes y el sur y oriente de Lo Barnechea, particularmente en áreas como El Arrayán, La Dehesa y Los Trapenses, que combinan una alta proporción de viviendas familiares con presencia de hogares extensos.\
+Las zonas con los valores más altos de personas por hogar (superiores a 4,3 personas en promedio) se concentran en el sector oriente, destacando las zonas censales del norte de Las Condes y el sur y oriente de Lo Barnechea, particularmente en áreas como El Arrayán, La Dehesa y Los Trapenses, que combinan una alta proporción de viviendas familiares con presencia de hogares extensos.
+
 En un rango ligeramente menor, también se identifican zonas con promedios elevados en La Reina y Peñalolén, donde aún predominan viviendas unifamiliares y hogares nucleares con hijos, reflejando dinámicas demográficas más tradicionales.
 
-En contraste, las zonas censales con menor tamaño medio del hogar (entre 2 y 3 personas) se concentran en el área central y pericentral del Gran Santiago, especialmente en las comunas de Santiago, Providencia, Ñuñoa, San Miguel e Independencia.\
+En contraste, las zonas censales con menor tamaño medio del hogar (entre 2 y 3 personas) se concentran en el área central y pericentral del Gran Santiago, especialmente en las comunas de Santiago, Providencia, Ñuñoa, San Miguel e Independencia.
+
 Estos valores más bajos se relacionan con procesos de densificación vertical y renovación urbana, caracterizados por el aumento de viviendas en altura y la proliferación de hogares unipersonales o de parejas jóvenes sin hijos, propios de zonas urbanas consolidadas con mayor acceso a servicios y transporte.
 
-Hacia las periferias en general —en comunas como Maipú, Cerrillos y San Bernardo— los valores son intermedios (entre 3 y 3,5 personas por hogar), representando áreas de expansión urbana reciente con mezcla de familias jóvenes, nuevos conjuntos habitacionales y hogares de tamaño medio.
+Hacia las periferias en general, en comunas como Maipú, Cerrillos y San Bernardo, los valores son intermedios (entre 3 y 3,5 personas por hogar), representando áreas de expansión urbana reciente con mezcla de familias jóvenes, nuevos conjuntos habitacionales y hogares de tamaño medio.
 
-En conjunto, el mapa revela un gradiente centro–periferia con matices oriente–poniente, donde los hogares pequeños dominan en el centro urbano y las zonas verticalizadas, mientras que los hogares de mayor tamaño se concentran hacia el oriente y en algunos sectores periféricos.\
+En conjunto, el mapa revela un gradiente centro-periferia con matices oriente-poniente, donde los hogares pequeños dominan en el centro urbano y las zonas verticalizadas, mientras que los hogares de mayor tamaño se concentran hacia el oriente y en algunos sectores periféricos.
+
 Este patrón refleja las diferencias socioeconómicas y morfológicas del Gran Santiago, donde el sector oriente concentra hogares familiares de mayor tamaño vinculados a viviendas amplias, y el centro urbano presenta hogares más reducidos y atomizados, en correspondencia con los procesos contemporáneos de transformación residencial y segmentación del espacio urbano.
 
 Habiendo realizado el análisis para cada indicador por separado a continuación analizaremos la relación conjunta a través de la distribución de los datos gráficamente en cuartiles y luego espacialmente en el mapa bivariado.
+
+#### 3.2.3 Gráfico de dispersión entre porcentaje de población 25-39 y tamaño medio del hogar por zona censal, Gran Santiago
 
 ```{r dispersion_bivariada_solo, fig.width=12, fig.height=4.5, message=FALSE, warning=FALSE}
 df_plot <- sf_ind |>
@@ -419,7 +429,7 @@ ggplot(df_bi, aes(x = pct_25_39, y = tam_med_hogar)) +
 
 ```
 
-El gráfico de dispersión bivariada muestra la relación entre el porcentaje de población joven-adulta (25–39 años) y el tamaño medio del hogar por zona censal en el Gran Santiago. La clasificación en cuartiles permite identificar cuatro cuadrantes que combinan diferentes niveles de ambos indicadores, revelando patrones espaciales y demográficos distintivos dentro del área metropolitana.
+El gráfico de dispersión bivariada muestra la relación entre el porcentaje de población joven-adulta (25-39 años) y el tamaño medio del hogar por zona censal en el Gran Santiago. La clasificación en cuartiles permite identificar cuatro cuadrantes que combinan diferentes niveles de ambos indicadores, revelando patrones espaciales y demográficos distintivos dentro del área metropolitana.
 
 En términos generales, se observa una relación inversa entre ambas variables: a medida que aumenta el porcentaje de población joven (eje X), el tamaño medio del hogar (eje Y) tiende a disminuir. Este comportamiento indica que las zonas donde predominan los adultos jóvenes suelen presentar hogares más pequeños, mientras que los sectores con menor presencia de este grupo etario tienden a tener hogares más extensos.
 
@@ -432,6 +442,8 @@ Los cuadrantes permiten distinguir distintos comportamientos:
 En conjunto, el gráfico evidencia una correlación negativa moderada entre ambas variables, donde las áreas con más población joven tienden a presentar hogares de menor tamaño promedio.
 
 Ahora habiendo visto la dispersión de los datos de la relación bivariada la vamos a análizar de manera espacial a través del mapa del Gran Santiago.
+
+#### 3.2.4 Relación entre porcentaje de población 25-39 y tamaño medio del hogar por zona censal, Gran Santiago
 
 ```{r mapa_bivariado, fig.width=13, fig.height=8, message=FALSE, warning=FALSE}
 sf_bi <- biscale::bi_class(
@@ -480,17 +492,40 @@ p_final <- cowplot::ggdraw() +
 p_final
 ```
 
-El mapa bivariado combina dos variables —el porcentaje de población de 25 a 39 años y el tamaño medio del hogar—, mediante una clasificación cuantílica (3×3) que permite visualizar la distribución espacial conjunta de ambos indicadores.\
-La escala de color representa la interacción entre ambas dimensiones: los tonos azules indican hogares grandes, los rosados corresponden a hogares pequeños, y la intensidad de color refleja el nivel de presencia de población joven-adulta.
+El mapa bivariado combina las dos variables mencionadas anteriormente, siendo estas el porcentaje de población de 25 a 39 años y el tamaño medio del hogar mediante una clasificación cuantílica (3×3) que permite visualizar la distribución espacial conjunta de ambos indicadores.
 
-Desde una lectura espacial, el patrón muestra una distribución claramente diferenciada entre el centro y la periferia metropolitana.\
-Las zonas centrales y pericentrales del Gran Santiago —principalmente en las comunas de Santiago, Providencia, Ñuñoa, Independencia y San Miguel— presentan tonalidades rosadas, que reflejan una alta concentración de población joven (25–39 años) combinada con hogares pequeños. Este patrón coincide con áreas densificadas y verticalizadas, donde predominan viviendas de menor tamaño y estructuras domésticas reducidas.
+Desde una lectura espacial, el patrón muestra una distribución claramente diferenciada entre el centro y la periferia de la conurbación.
 
-En contraste, hacia la periferia sur y nororiente, en comunas como Lo Barnechea, Las Condes, Peñalolén y Puente Alto, se observan tonalidades azules y turquesa, asociadas a hogares de mayor tamaño y una menor proporción de población joven, propias de sectores residenciales consolidados o de familias numerosas.
+Las zonas centrales y pericentrales del Gran Santiago, principalmente en las comunas de Santiago, Providencia, Ñuñoa, Independencia y San Miguel, presentan tonalidades calipso que reflejan una alta concentración de población joven (25-39 años) combinada con hogares pequeños. Este patrón coincide con áreas densificadas y verticalizadas, donde predominan viviendas de menor tamaño y estructuras domésticas reducidas.
 
-El mapa evidencia, por tanto, una relación espacialmente inversa entre ambas variables: mientras la población joven se concentra en sectores centrales con hogares pequeños, los hogares más extensos predominan en las áreas periféricas.\
+En contraste, hacia la periferia, en comunas como Lo Barnechea, Las Condes, Peñalolén, La Reina, Huechuraba, Puente Alto, entre otras, se observan tonalidades de color morado, asociadas a hogares de mayor tamaño y una menor proporción de población joven, propias de sectores residenciales consolidados o de familias numerosas.
+
+El mapa evidencia, por tanto, una relación espacialmente inversa entre ambas variables: mientras la población joven se concentra en sectores centrales con hogares pequeños, los hogares más extensos predominan en las áreas periféricas.
+
 Este patrón sugiere un proceso de segmentación socioespacial, donde el ciclo de vida familiar, la oferta habitacional y las condiciones socioeconómicas influyen en la distribución territorial de los distintos grupos etarios dentro del área metropolitana.
 
-# 3. Conclusión
+------------------------------------------------------------------------
 
-# 4. Bibliografía
+# 4. Conclusión
+
+El análisis conjunto de la población de 25 a 39 años y el tamaño medio del hogar en el Gran Santiago permitió evidenciar patrones demográficos y espaciales que reflejan la estructura socioresidencial de la conurbación.
+
+En primer lugar, los histogramas mostraron que ambos indicadores presentan distribuciones asimétricas: la proporción de población joven-adulta se concentra mayoritariamente en rangos intermedios (entre 15% y 25%), mientras que el tamaño medio del hogar se mantiene entre 3 y 3,5 personas.
+
+El análisis bivariado reveló una tendencia inversa entre ambas variables, donde las zonas con mayor porcentaje de población joven presentan hogares de menor tamaño promedio. Esta relación se confirmó espacialmente en el mapa bivariado, el cual mostró una clara diferenciación centro-periferia: el centro metropolitano (Santiago, Providencia, Ñuñoa, San Miguel) agrupa hogares pequeños con alta presencia de adultos jóvenes, mientras que las comunas periféricas (Puente Alto, Lo Barnechea, Peñalolén, Maipú) concentran hogares más extensos y menor proporción de este grupo etario.
+
+En conjunto, los resultados reflejan procesos de fragmentación y diferenciación socioespacial, donde el ciclo de vida familiar, las condiciones del mercado habitacional y la estructura socioeconómica condicionan la distribución territorial de la población joven. El Gran Santiago evidencia así una organización espacial marcada por la centralidad juvenil y la periferia familiar, coherente con las dinámicas urbanas contemporáneas de las grandes ciudades latinoamericanas.
+
+------------------------------------------------------------------------
+
+# 5. Bibliografía
+
+-   Instituto Nacional de Estadísticas. (2025, 27 de marzo). *Primeros resultados del Censo 2024: 18 480 432 personas fueron censadas en Chile* [Comunicado de prensa]. Gobierno de Chile. <https://www.ine.gob.cl/sala-de-prensa/prensa/general/noticia/primeros-resultados-del-censo-2024-18> 480 432-personas-fueron-censadas-en-chile (Consultado el 18 oct 2025).
+
+<!-- -->
+
+-   Centro de Políticas Públicas UC & Corporación Déficit Cero. (2022). *Ideas clave del Gran Santiago – Déficit Cero* [Informe]. [https://deficitcero.cl/uploads/estudios/GRAN_SANTIAGO.pdf](https://deficitcero.cl/uploads/estudios/GRAN_SANTIAGO.pdf?utm_source=chatgpt.com) (Consultado el 18 oct 2025).
+
+-   Centro de Despliegue Transporte Informa. (2017, noviembre). *Distribución comunas Gran Santiago, noviembre 2017* [PDF]. Transporte Informa. [https://www.transporteinforma.cl/wp-content//uploads/2019/02/Distribucio%CC%81n-Comunas-Gran-Santiago-noviembre-2017.pdf](https://www.transporteinforma.cl/wp-content//uploads/2019/02/Distribucio%CC%81n-Comunas-Gran-Santiago-noviembre-2017.pdf?utm_source=chatgpt.com)
+
+-   Instituto Nacional de Estadísticas (INE). (s. f.). *Censo de población y vivienda* [Página web]. Recuperado de [https://www.ine.gob.cl/estadisticas/sociales/censos-de-poblacion-y-vivienda](https://www.ine.gob.cl/estadisticas/sociales/censos-de-poblacion-y-vivienda?utm_source=chatgpt.com)
