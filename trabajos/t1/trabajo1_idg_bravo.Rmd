@@ -340,8 +340,7 @@ En continuidad espacial, las comunas de Providencia, Ñuñoa, San Miguel e Indep
 
 Hacia la periferia, la proporción de población joven-adulta disminuye de manera notoria, predominando zonas censales con valores bajo el 25 %. Sin embargo, se observan algunos núcleos atípicos de mayor concentración en sectores específicos de Puente Alto y Renca, donde probablemente inciden factores como la expansión de proyectos habitacionales recientes o la llegada de nuevos hogares jóvenes en búsqueda de viviendas más asequibles.
 
-En conjunto, la distribución espacial del indicador revela un patrón centro-periferia inverso, donde la población joven se concentra en los sectores centrales y pericentrales, mientras que la periferia metropolitana presenta una estructura demográfica más envejecida o familiarmente consolidada.\
-Este comportamiento es coherente con las transformaciones residenciales observadas en las últimas décadas en el Gran Santiago, caracterizadas por la reurbanización de los barrios centrales y la fragmentación socioespacial de la juventud urbana.
+En conjunto, la distribución espacial del indicador revela un patrón centro-periferia inverso, donde la población joven se concentra en los sectores centrales y pericentrales, mientras que la periferia metropolitana presenta una estructura demográfica más envejecida o familiarmente consolidada. Este comportamiento es coherente con las transformaciones residenciales observadas en las últimas décadas en el Gran Santiago, caracterizadas por la reurbanización de los barrios centrales y la fragmentación socioespacial de la juventud urbana.
 
 #### 3.2.2 Tamaño medio de hogar por zona censal, Gran Santiago
 
@@ -371,15 +370,11 @@ Las zonas con los valores más altos de personas por hogar (superiores a 4,3 per
 
 En un rango ligeramente menor, también se identifican zonas con promedios elevados en La Reina y Peñalolén, donde aún predominan viviendas unifamiliares y hogares nucleares con hijos, reflejando dinámicas demográficas más tradicionales.
 
-En contraste, las zonas censales con menor tamaño medio del hogar (entre 2 y 3 personas) se concentran en el área central y pericentral del Gran Santiago, especialmente en las comunas de Santiago, Providencia, Ñuñoa, San Miguel e Independencia.
-
-Estos valores más bajos se relacionan con procesos de densificación vertical y renovación urbana, caracterizados por el aumento de viviendas en altura y la proliferación de hogares unipersonales o de parejas jóvenes sin hijos, propios de zonas urbanas consolidadas con mayor acceso a servicios y transporte.
+En contraste, las zonas censales con menor tamaño medio del hogar (entre 2 y 3 personas) se concentran en el área central y pericentral del Gran Santiago, especialmente en las comunas de Santiago, Providencia, Ñuñoa, San Miguel e Independencia. Estos valores más bajos se relacionan con procesos de densificación vertical y renovación urbana, caracterizados por el aumento de viviendas en altura y la proliferación de hogares unipersonales o de parejas jóvenes sin hijos, propios de zonas urbanas consolidadas con mayor acceso a servicios y transporte.
 
 Hacia las periferias en general, en comunas como Maipú, Cerrillos y San Bernardo, los valores son intermedios (entre 3 y 3,5 personas por hogar), representando áreas de expansión urbana reciente con mezcla de familias jóvenes, nuevos conjuntos habitacionales y hogares de tamaño medio.
 
-En conjunto, el mapa revela un gradiente centro-periferia con matices oriente-poniente, donde los hogares pequeños dominan en el centro urbano y las zonas verticalizadas, mientras que los hogares de mayor tamaño se concentran hacia el oriente y en algunos sectores periféricos.
-
-Este patrón refleja las diferencias socioeconómicas y morfológicas del Gran Santiago, donde el sector oriente concentra hogares familiares de mayor tamaño vinculados a viviendas amplias, y el centro urbano presenta hogares más reducidos y atomizados, en correspondencia con los procesos contemporáneos de transformación residencial y segmentación del espacio urbano.
+En conjunto, el mapa revela un gradiente centro-periferia con matices oriente-poniente, donde los hogares pequeños dominan en el centro urbano y las zonas verticalizadas, mientras que los hogares de mayor tamaño se concentran hacia el oriente y en algunos sectores periféricos. Este patrón refleja las diferencias socioeconómicas y morfológicas del Gran Santiago, donde el sector oriente concentra hogares familiares de mayor tamaño vinculados a viviendas amplias, y el centro urbano presenta hogares más reducidos y atomizados, en correspondencia con los procesos contemporáneos de transformación residencial y segmentación del espacio urbano.
 
 Habiendo realizado el análisis para cada indicador por separado a continuación analizaremos la relación conjunta a través de la distribución de los datos gráficamente en cuartiles y luego espacialmente en el mapa bivariado.
 
@@ -437,7 +432,7 @@ Los cuadrantes permiten distinguir distintos comportamientos:
 
 -   El **Q2** concentra la mayor cantidad de zonas, caracterizadas por una alta proporción de población joven y hogares pequeños, lo que sugiere una predominancia de estructuras domésticas reducidas.
 
--    En contraste, el **Q4** agrupa zonas con baja presencia de población joven y hogares de mayor tamaño, mientras que el **Q1 y Q3** representan casos menos frecuentes con combinaciones intermedias.
+-   En contraste, el **Q4** agrupa zonas con baja presencia de población joven y hogares de mayor tamaño, mientras que el **Q1 y Q3** representan casos menos frecuentes con combinaciones intermedias.
 
 En conjunto, el gráfico evidencia una correlación negativa moderada entre ambas variables, donde las áreas con más población joven tienden a presentar hogares de menor tamaño promedio.
 
