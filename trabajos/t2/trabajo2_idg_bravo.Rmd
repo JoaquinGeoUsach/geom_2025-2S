@@ -1,0 +1,595 @@
+---
+title: "Relación espacial entre la población emprendedora y la tipología de vivienda en el Gran Santiago: un análisis bivariado mediante técnicas de microsimulación y datos censales"
+author: "Joaquín Bravo Veas"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+------------------------------------------------------------------------
+
+# 1. Introducción
+
+El emprendimiento se ha convertido en una expresión importante de las transformaciones sociales y económicas que viven las ciudades. Detrás de cada iniciativa emprendedora existen condiciones territoriales, oportunidades y limitaciones que dependen, en gran medida, del entorno urbano en que las personas habitan. En el caso del Gran Santiago, estas dinámicas se manifiestan de forma muy diversa, reflejando las desigualdades estructurales que caracterizan a la metrópoli (Ministerio de Economía, Fomento y Turismo, 2023).
+
+La relación entre forma de habitar y actividad emprendedora ofrece una mirada interesante para comprender cómo la vivienda , ya sea casa o departamento, puede influir en la forma en que las personas desarrollan proyectos propios. Las zonas donde predominan viviendas unifamiliares suelen asociarse a mayor estabilidad económica y espacios adaptables para actividades productivas, mientras que las áreas con alta densidad en departamentos tienden a concentrar población joven, movilidad laboral y emprendimientos más ligados a servicios o economía digital (INE, 2017; CEPAL, 2021).
+
+Este trabajo busca analizar de qué manera el emprendimiento se relaciona con la forma de habitar en el Gran Santiago, tomando como referencia el porcentaje de población emprendedora (estimado mediante microsimulación de la CASEN 2022) y la tipología de vivienda predominante (casas o departamentos) a nivel de zona censal urbana. A través de mapas bivariados y análisis espacial, se examinan patrones de coexistencia entre ambos fenómenos y se exploran sus posibles implicancias para la localización óptima de negocios y servicios urbanos.
+
+Este enfoque no solo permite comprender la geografía del emprendimiento, sino también identificar áreas con potencial para el establecimiento de bodegas, talleres, oficinas de primer piso o pequeños comercios de barrio, donde el tejido emprendedor ya se encuentra consolidado. Los resultados aportan una base territorial que puede contribuir al diseño de estrategias de planificación económica local, uso mixto del suelo y desarrollo urbano sostenible.
+
+## 1.2 Objetivo general
+
+Analizar la relación espacial entre la población emprendedora y la tipología de vivienda predominante en el Gran Santiago, identificando patrones territoriales y áreas potenciales para la localización óptima de actividades económicas, a partir de la integración de datos de la Encuesta CASEN 2022 y el Censo 2017 mediante técnicas de microsimulación y análisis bivariado.
+
+## 1.3 Objetivos especificos
+
+-   Estimar la distribución territorial de la población emprendedora en el área urbana del Gran Santiago, aplicando técnicas de microsimulación espacial que integren la información socioeconómica de la CASEN 2022 con la estructura geográfica y demográfica del Censo 2017.
+-   Caracterizar la distribución espacial de la tipología habitacional (viviendas tipo casa y tipo departamento) en las zonas urbanas del Gran Santiago, utilizando los registros del Censo 2017.
+-   Analizar la relación espacial entre el emprendimiento y la forma de habitar mediante un enfoque bivariado, identificando zonas donde ambos fenómenos coinciden y que representan oportunidades estratégicas para la localización de negocios, como bodegas, talleres, oficinas de primer piso o servicios de proximidad.
+
+------------------------------------------------------------------------
+
+# 2. Metodología
+
+El análisis se desarrolló en el software RStudio, integrando diversas librerías para la gestión de datos socioeconómicos, conexión con bases geoespaciales y visualización de resultados. En esta etapa se cargaron los paquetes necesarios para la manipulación estadística (dplyr, data.table), el tratamiento de información geográfica (sf, units) y la construcción de mapas (ggplot2, biscale, cowplot), además de herramientas para conectar con bases de datos PostgreSQL.
+
+Se trabajó con dos fuentes principales: la Encuesta CASEN 2022, utilizada para identificar la población emprendedora, y el Censo 2017, empleado como base estructural para la calibración y el análisis territorial. Ambas bases fueron pre-procesadas para unificar formatos, seleccionar variables relevantes y eliminar inconsistencias.
+
+Durante el preproceso de la CASEN, se seleccionaron variables sociodemográficas claves (edad, sexo, nivel educacional, ingresos y emprendimiento) y se ajustaron sus tipos y categorías para hacerlas compatibles con la estructura censal. Se aplicó además una imputación ligera del nivel educacional, basada en los ingresos autónomos, con el fin de mantener la representatividad de la muestra. Finalmente, se creó una variable binaria que identifica a las personas con actividad emprendedora, la cual serviría como base para el modelo de microsimulación posterior.
+
+```{r librerias, message=FALSE, warning=FALSE}
+################################################################################
+## 1) LIBRERÍAS
+################################################################################
+library(rakeR)
+library(RPostgres)
+library(DBI)
+library(sf)
+library(dplyr)
+library(data.table)
+library(ggplot2)
+library(scales)
+library(units)
+library(RColorBrewer)
+library(rlang)
+library(stringi)
+library(tidyr)
+library(grid)
+library(cowplot)
+library(biscale)
+
+################################################################################
+## 2) ENTRADAS Y BASES
+################################################################################
+ruta_casen <- "D:/usach/geomarketing/rds/casen_rm.rds"
+ruta_censo <- "D:/usach/geomarketing/rds/cons_censo_df.rds"
+casen_raw  <- readRDS(ruta_casen)
+cons_censo_df <- readRDS(ruta_censo)
+
+################################################################################
+## 3) PREPROCESO CASEN
+################################################################################
+col_cons   <- sort(setdiff(names(cons_censo_df), c("GEOCODIGO","COMUNA")))
+age_levels <- grep("^edad", col_cons, value = TRUE)
+esc_levels <- grep("^esco", col_cons, value = TRUE)
+sexo_levels<- grep("^sexo", col_cons, value = TRUE)
+
+vars_base <- c("estrato","esc","edad","sexo","e6a","y7")
+casen <- casen_raw[, vars_base, drop = FALSE]; rm(casen_raw)
+casen$Comuna  <- substr(as.character(casen$estrato), 1, 5); casen$estrato <- NULL
+casen$esc  <- as.integer(unclass(casen$esc))
+casen$edad <- as.integer(unclass(casen$edad))
+casen$e6a  <- as.numeric(unclass(casen$e6a))
+casen$sexo <- as.integer(unclass(casen$sexo))
+casen$y7   <- as.numeric(unclass(casen$y7))
+
+# Imputación ligera de escolaridad
+idx_na <- which(is.na(casen$esc))
+if (length(idx_na) > 0) {
+  df_fit <- casen[!is.na(casen$esc) & !is.na(casen$e6a), ]
+  if (nrow(df_fit) > 5) {
+    fit  <- lm(esc ~ e6a, data = df_fit)
+    pred <- predict(fit, newdata = casen[idx_na, , drop = FALSE])
+    casen$esc[idx_na] <- as.integer(round(pmax(0, pmin(29, pred))))
+  }
+}
+
+casen$ID <- as.character(seq_len(nrow(casen)))
+casen$edad_cat <- cut(casen$edad, breaks=c(0,30,40,50,60,70,80,Inf),
+                      labels=age_levels, right=FALSE, include.lowest=TRUE)
+casen$esc_cat  <- factor(with(casen,
+                              ifelse(esc==0,esc_levels[1],
+                                     ifelse(esc<=8,esc_levels[2],
+                                            ifelse(esc<=12,esc_levels[3],esc_levels[4])))),
+                         levels=esc_levels)
+casen$sexo_cat <- factor(ifelse(casen$sexo==2,sexo_levels[1],
+                                ifelse(casen$sexo==1,sexo_levels[2],NA)),
+                         levels=sexo_levels)
+casen$empr <- as.integer(!is.na(casen$y7) & casen$y7 > 0)
+
+```
+
+## 2.1.1 Estimación de la población emprendedora (microsimulación)
+
+El análisis parte de la identificación de la población con actividad emprendedora, utilizando la variable "y7" de la Encuesta CASEN 2022, correspondiente a la pregunta:
+
+-   ***“¿Tiene usted actualmente un trabajo por cuenta propia, negocio o actividad independiente?”***
+
+Esta variable es de carácter binario, tomando el valor 1 cuando la persona declara ejercer una actividad independiente o tener un emprendimiento propio, y 0 en caso contrario. Esta estructura permite modelar la condición de emprendimiento como una probabilidad dicotómica, adecuada para procesos de microsimulación y análisis espacial de proporciones.
+
+Además, la base CASEN asocia a esta variable información complementaria de tipo socioeconómico, entre las que destacan los ingresos autónomos, nivel educacional, edad, sexo y situación ocupacional. Estos atributos son esenciales para ajustar el modelo de microsimulación, ya que permiten representar de forma más realista la distribución territorial del fenómeno.
+
+Para estimar la distribución espacial del emprendimiento, se aplicó una microsimulación basada en el método de “raking” mediante el paquete "rakeR" en R (Lovelace & Ballas, 2013). Esta técnica pondera los individuos de la CASEN hasta hacerlos coincidir con las estructuras poblacionales del Censo 2017 (por edad, sexo y escolaridad), generando una población sintética coherente con la realidad de cada zona censal.
+
+El resultado del proceso es un indicador continuo que representa el porcentaje estimado de personas emprendedoras por zona censal urbana, lo que permite observar variaciones espaciales del emprendimiento dentro del Gran Santiago.
+
+```{r}
+################################################################################
+## 4) MICROSIMULACIÓN CON rakeR
+################################################################################
+cons_censo_comunas <- split(cons_censo_df, cons_censo_df$COMUNA)
+inds_list          <- split(casen, casen$Comuna)
+set.seed(123)
+
+sim_list <- lapply(names(cons_censo_comunas), function(zona){
+  cons_i    <- cons_censo_comunas[[zona]]
+  col_order <- sort(setdiff(names(cons_i), c("COMUNA","GEOCODIGO")))
+  cons_i    <- cons_i[, c("GEOCODIGO", col_order), drop=FALSE]
+  tmp <- inds_list[[zona]]; if (is.null(tmp)) return(NULL)
+  inds_i <- tmp[, c("ID","edad_cat","esc_cat","sexo_cat"), drop=FALSE]
+  names(inds_i) <- c("ID","Edad","Escolaridad","Sexo")
+  inds_i <- inds_i[complete.cases(inds_i), , drop=FALSE]
+  if (nrow(inds_i)==0) return(NULL)
+  w_frac <- weight(cons=cons_i, inds=inds_i, vars=c("Edad","Escolaridad","Sexo"))
+  sim_i  <- integerise(weights=w_frac, inds=inds_i, seed=123)
+  merge(sim_i, tmp[, c("ID","empr")], by="ID", all.x=TRUE)
+})
+
+sim_df <- data.table::rbindlist(Filter(Negate(is.null), sim_list), idcol="COMUNA", fill=TRUE)
+zonas_empr <- as.data.table(sim_df)[, .(
+  pct_emprendedores = mean(empr, na.rm=TRUE),
+  n_emprendedores   = sum(empr, na.rm=TRUE),
+  n_poblacion       = .N
+), by=.(zone)]
+data.table::setnames(zonas_empr, "zone", "geocodigo")
+zonas_empr$geocodigo <- as.character(zonas_empr$geocodigo)
+```
+
+## 2.1.2 Caracterización de la tipología habitacional
+
+La segunda etapa se centra en la descripción de la estructura habitacional del Gran Santiago, utilizando como fuente el Censo de Población y Vivienda 2017, administrado por el Instituto Nacional de Estadísticas (INE).\
+En particular, se empleó la variable p01, correspondiente a la pregunta:
+
+-   ***“¿De qué tipo es esta vivienda?”***
+
+Esta variable clasifica las viviendas particulares según su tipología constructiva y morfológica, lo que permite diferenciar entre casas, departamentos, y otras formas de residencia menos frecuentes (como mediaguas, ranchos o viviendas móviles). Los valores más representativos para el área urbana del Gran Santiago son:
+
+| Código | Tipo de vivienda | Descripción |
+|------------------------|------------------------|------------------------|
+| 1 | Casa | Vivienda unifamiliar construida en terreno propio o subdividido |
+| 2 | Departamento | Unidad habitacional en edificio de altura o conjunto de departamentos |
+| 3-7 | Otras | Incluye mediagua, rancho, choza, movil o improvisada |
+
+Para este estudio se consideraron exclusivamente las categorías 1 (Casa) y 2 (Departamento), dado que representan más del 95% de las viviendas particulares ocupadas dentro del área urbana del Gran Santiago.
+
+La información fue extraída directamente desde la base de datos PostgreSQL (censo_rm_2017), a través de consultas SQL estructuradas que permitieron filtrar las viviendas particulares ocupadas (p02 = 1) y calcular, para cada zona censal urbana, los siguientes indicadores:
+
+-   Porcentaje de viviendas tipo casa (%)
+
+-   Porcentaje de viviendas tipo departamento (%)
+
+-   Número total de viviendas particulares por zona censal
+
+Estos indicadores se integraron en un objeto espacial "sf" junto con la geometría censal, lo que permitió representar y comparar la distribución espacial de ambas tipologías habitacionales en relación con los patrones del emprendimiento previamente estimados.
+
+La variable p01 es especialmente relevante para la interpretación territorial del fenómeno, ya que refleja la morfología urbana y el nivel de densificación residencial de cada zona.\
+Mientras las viviendas tipo casa suelen asociarse a sectores consolidados, con mayor disponibilidad de espacio y posibilidades de uso mixto (residencial–productivo), las viviendas tipo departamento se vinculan a zonas de densidad alta y con potencial para emprendimientos de servicios o comercios de proximidad, tales como oficinas de primer piso, cafeterías o tiendas locales.
+
+De este modo, la caracterización de la tipología habitacional permite incorporar un componente espacial y funcional al análisis, sirviendo como base para explorar la relación entre forma de habitar y actividad emprendedora en la siguiente etapa.
+
+## 2.1.3 Análisis espacial y modelación bivariada
+
+En la tercera etapa se integraron ambas dimensiones, emprendimiento y tipología habitacional, mediante un análisis bivariado espacial utilizando el paquete "biscale" (Tennekes, 2018).\
+Esta técnica clasifica las zonas censales según cuantiles combinados de dos variables (3×3 categorías), permitiendo identificar áreas con alta coincidencia entre población emprendedora y determinado tipo de vivienda. Se generaron dos modelos complementarios:
+
+-   Modelo 1: % Emprendedores vs % Viviendas tipo casa
+
+-   Modelo 2: % Emprendedores vs % Viviendas tipo departamento
+
+Los resultados se representaron cartográficamente en el área urbana del Gran Santiago, delimitada por las comunas de la Provincia de Santiago, San Bernardo y Puente Alto.\
+A través de los mapas bivariados se analizaron los patrones de concentración territorial y se propusieron zonas con potencial para la localización de actividades económicas, como bodegas, talleres o microoficinas en sectores consolidados, y oficinas o servicios de primer piso en áreas de alta densificación residencial.
+
+## 2.1.4 Representación cartográfica y análisis visual
+
+Todas las operaciones espaciales se realizaron en formato vectorial con geometrías tipo sf (simple features) y sistema de referencia WGS84 / UTM 19S. Los mapas fueron elaborados en RStudio, utilizando las librerías ggplot2, sf, scales, y cowplot, asegurando una presentación homogénea de color, simbología y escala.
+
+```{r}
+################################################################################
+## 5) CONEXIÓN Y GEOMETRÍAS DESDE PostgreSQL
+################################################################################
+norm_str <- function(x) tolower(stringi::stri_trans_general(as.character(x), "Latin-ASCII"))
+con <- dbConnect(Postgres(),
+                 dbname="censo_rm_2017", host="localhost", port=5432,
+                 user="postgres", password="postgres")
+
+zonas_censales_rm <- st_read(con, query="SELECT * FROM dpa.zonas_censales_rm;", quiet=TRUE)
+comunas_rm_shp    <- st_read(con, query="SELECT * FROM dpa.comunas_rm_shp;",  quiet=TRUE)
+dbDisconnect(con)
+
+names(zonas_censales_rm) <- tolower(names(zonas_censales_rm))
+names(comunas_rm_shp)    <- tolower(names(comunas_rm_shp))
+
+zonas_censales_rm <- zonas_censales_rm |>
+  mutate(geocodigo = as.character(geocodigo)) |>
+  left_join(zonas_empr, by="geocodigo") |>
+  mutate(prop_empr = pct_emprendedores)
+
+################################################################################
+## 6) FILTRO URBANO Y RECORTE GRAN SANTIAGO
+################################################################################
+urb_cols <- intersect(c("urbano","es_urbano","urban","zona_urbana","urb"), names(zonas_censales_rm))
+if (length(urb_cols)) {
+  col_u <- urb_cols[1]
+  zonas_censales_rm <- zonas_censales_rm |>
+    mutate(.urb_raw = .data[[col_u]], .urb_str = norm_str(.urb_raw)) |>
+    filter(.urb_raw %in% c(1, TRUE) | .urb_str %in% c("u","urbano","urban","true","si","s","1"))
+}
+
+zonas_censales_rm <- st_make_valid(zonas_censales_rm)
+comunas_rm_shp    <- st_make_valid(comunas_rm_shp)
+gs_comunas <- comunas_rm_shp |>
+  filter(nom_provin == "SANTIAGO" | nom_comuna %in% c("SAN BERNARDO","PUENTE ALTO"))
+
+inter <- suppressWarnings(st_intersection(st_make_valid(zonas_censales_rm),
+                                          st_make_valid(gs_comunas)))
+inter <- st_collection_extract(inter, "POLYGON")
+inter <- inter[!st_is_empty(inter), ]
+
+u_zonas <- st_union(inter)
+buf <- tryCatch(st_buffer(st_make_valid(u_zonas), set_units(2000, "m")),
+                error = function(e) st_buffer(st_make_valid(u_zonas), 2000))
+bb <- st_bbox(buf)
+xlim_zoom <- c(bb["xmin"], bb["xmax"])
+ylim_zoom <- c(bb["ymin"], bb["ymax"])
+
+comunas_clip <- suppressWarnings(st_intersection(gs_comunas, st_as_sf(u_zonas))) |>
+  st_make_valid() |> st_collection_extract("POLYGON")
+comunas_clip <- comunas_clip[!st_is_empty(comunas_clip), ] |>
+  dplyr::group_by(nom_comuna) |> dplyr::summarise(.groups="drop")
+
+################################################################################
+## 7) TEMA Y PALETA
+################################################################################
+pal_blues <- c("#f7fbff","#deebf7","#c6dbef","#9ecae1","#6baed6","#3182bd","#08519c")
+theme_joaquín <- function() {
+  theme_minimal(base_size = 12) +
+    theme(
+      panel.grid.major = element_line(color = "grey85", linewidth = 0.3),
+      panel.grid.minor = element_blank(),
+      axis.text        = element_text(color = "grey30"),
+      axis.title       = element_blank(),
+      axis.ticks       = element_blank(),
+      plot.title       = element_text(face = "bold", size = 14),
+      plot.subtitle    = element_text(color = "grey30", size = 11),
+      plot.caption     = element_text(size = 8, color = "grey40"),
+      legend.position  = "right",
+      legend.justification = "center",
+      legend.title     = element_text(face = "bold", margin = margin(b = 8)),
+      legend.key.height= unit(14, "pt"),
+      legend.key.width = unit(10, "pt"),
+      plot.margin      = margin(10, 40, 10, 10)
+    )
+}
+
+```
+
+------------------------------------------------------------------------
+
+# 3. Resultados y Análisis
+
+En esta sección se presentan los resultados obtenidos a partir del proceso de microsimulación, el análisis censal y la integración espacial de ambas variables. Los mapas permiten observar la distribución geográfica del emprendimiento y de las tipologías habitacionales dentro del área urbana del Gran Santiago, así como los patrones de coincidencia territorial entre ambas dimensiones.
+
+## 3.1 Distribución espacial del emprendimiento
+
+```{r mapa_emprendedores, fig.width=13, fig.height=8, message=FALSE, warning=FALSE}
+################################################################################
+## 8) MAPA DE EMPRENDEDORES (%)
+################################################################################
+inter$prop_pct <- 100 * inter$prop_empr
+max_plot <- 18.8
+
+p_empr <- ggplot(inter) +
+  geom_sf(aes(fill = prop_pct),
+          color = alpha("white", 0.6), linewidth = 0.15) +
+  geom_sf(data = comunas_clip, fill = NA,
+          color = "grey25", linewidth = 0.45) +
+  coord_sf(xlim = xlim_zoom, ylim = ylim_zoom, expand = FALSE,
+           label_graticule = "SW", label_axes = "SW") +
+  scale_fill_gradientn(colors = pal_blues,
+                       limits = c(0, max_plot),
+                       oob = squish,
+                       name = "% con emprendimientos",
+                       breaks = c(0,5,10,15,18.8),
+                       labels = function(x) gsub("\\.", ",", sprintf("%.1f", x))) +
+  guides(fill = guide_colorbar(barheight = unit(120, "pt"),
+                               title.position = "top", title.hjust = 0.5)) +
+  labs(title = "Población con actividad emprendedora (%)",
+       subtitle = "Zona urbana del Gran Santiago por zona censal",
+       caption = "Fuente: CASEN (rakeR) + Censo 2017") +
+  theme_joaquín()
+
+ggsave("mapa_emprendedores_urbano.png", p_empr, width = 9, height = 7, dpi = 300)
+print(p_empr)
+```
+
+El mapa presenta la distribución espacial del porcentaje de personas con actividad emprendedora en el área urbana del Gran Santiago, evidenciando una marcada heterogeneidad territorial entre comunas y zonas censales.\
+
+Como se observa en la leyenda el mapa, el valor máximo alcanza un 18,8 % de la población total en una zona censal del sector sur de La Pintana, correspondiente al conjunto habitacional La Platina, un área históricamente asociada a vivienda social.\
+
+Este porcentaje representa una alta concentración local de emprendimiento en términos poblacionales. En este contexto, el emprendimiento se entiende como una estrategia económica vinculada al autoempleo, al trabajo informal o a pequeños oficios de subsistencia que se desarrollan dentro o cerca del entorno residencial.
+
+El caso de La Platina puede explicarse por varios factores: la alta densidad poblacional, la limitada disponibilidad de empleo formal en el entorno inmediato, y la presencia de espacios residenciales adaptables a actividades económicas domésticas (venta de alimentos, talleres, servicios personales, entre otros). A esto se suma una trayectoria socioeconómica marcada por la vulnerabilidad laboral y territorial, lo que ha impulsado la creación de microemprendimientos familiares como una forma de resiliencia comunitaria frente a la precariedad del mercado laboral formal.
+
+De manera general, el mapa revela otras comunas con zonas censales de altos porcentajes de emprendedores, entre ellas Independencia, Quinta Normal, Estación Central, Pedro Aguirre Cerda, La Cisterna y San Ramón, donde predominan tejidos urbanos consolidados, con fuerte presencia de actividades comerciales barriales, ferias libres y talleres. En estos sectores, el emprendimiento suele combinarse con el uso mixto del suelo (vivienda y actividad económica) y refleja un modelo de autoempleo característico de sectores medios y populares del Gran Santiago.
+
+Por otro lado, las comunas del oriente metropolitano, como Providencia, Las Condes y Ñuñoa, junto con sectores de Puente Alto, Quilicura y Recoleta, exhiben porcentajes notablemente menores. En el caso del sector oriente, esto puede vincularse a una estructura económica más dependiente del empleo formal y profesional, con un mercado laboral más estable y especializado. En comunas periféricas como Puente Alto o Quilicura, la baja proporción puede asociarse a la predominancia de empleo asalariado industrial o de servicios, así como a limitaciones de capital o formalización para emprender.
+
+En conjunto, el patrón espacial evidencia que el emprendimiento se distribuye de manera desigual, respondiendo a factores socioeconómicos, urbanos y culturales. Mientras en comunas de menores ingresos el emprendimiento surge como una forma de adaptación y sobrevivencia económica, en sectores de mayores ingresos tiende a estar sustituido por empleos dependientes. Así, el mapa permite interpretar el emprendimiento como un indicador territorial de desigualdad y resiliencia social, estrechamente ligado a las condiciones estructurales del mercado laboral metropolitano.
+
+## 3.2 Tipología habitacional: casas y departamentos
+
+```{r mapa_casas_dep, fig.width=13, fig.height=8, message=FALSE, warning=FALSE}
+################################################################################
+## 9) DISTRIBUCIÓN DE TIPO DE VIVIENDA (CASAS / DEPTOS)
+################################################################################
+con <- dbConnect(Postgres(),
+                 dbname="censo_rm_2017", host="localhost", port=5432,
+                 user="postgres", password="postgres")
+
+sql_tipo_viv <- "
+WITH base AS (
+  SELECT
+    z.geocodigo::text AS geocodigo,
+    c.nom_comuna,
+    v.p01,
+    v.p02
+  FROM public.viviendas v
+  JOIN public.zonas   z ON v.zonaloc_ref_id = z.zonaloc_ref_id
+  JOIN public.comunas c ON z.codigo_comuna  = c.codigo_comuna
+),
+viviendas_validas AS (
+  SELECT *
+  FROM base
+  WHERE p02 = 1  -- solo viviendas particulares ocupadas
+),
+agg AS (
+  SELECT
+    geocodigo,
+    MAX(nom_comuna) AS nom_comuna,
+    COUNT(*) AS total_viv,
+    COUNT(*) FILTER (WHERE p01 = 1) AS n_casas,
+    COUNT(*) FILTER (WHERE p01 = 2) AS n_deptos
+  FROM viviendas_validas
+  GROUP BY geocodigo
+)
+SELECT
+  geocodigo,
+  nom_comuna,
+  ROUND(100.0 * n_casas  / NULLIF(total_viv,0), 2) AS pct_casas,
+  ROUND(100.0 * n_deptos / NULLIF(total_viv,0), 2) AS pct_deptos
+FROM agg;
+"
+
+tbl_viv <- dbGetQuery(con, sql_tipo_viv) %>%
+  mutate(geocodigo = as.character(geocodigo))
+dbDisconnect(con)
+
+sf_viv <- inter %>%
+  mutate(geocodigo = as.character(geocodigo)) %>%
+  left_join(tbl_viv, by = "geocodigo")
+
+################################################################################
+## 10) MAPAS – % CASAS Y % DEPARTAMENTOS
+################################################################################
+p_casas <- ggplot(sf_viv) +
+  geom_sf(aes(fill = pct_casas),
+          color = alpha("white", 0.6), linewidth = 0.15) +
+  geom_sf(data = comunas_clip, fill = NA,
+          color = "grey25", linewidth = 0.45) +
+  coord_sf(xlim = xlim_zoom, ylim = ylim_zoom, expand = FALSE,
+           label_graticule = "SW", label_axes = "SW") +
+  scale_fill_gradientn(
+    colors = pal_blues,
+    limits = c(0, 100),
+    oob = squish,
+    name = "% de viviendas tipo casa",
+    breaks = c(0, 25, 50, 75, 100),
+    labels = label_number(accuracy = 1, decimal.mark = ",")
+  ) +
+  guides(fill = guide_colorbar(barheight = unit(120, "pt"),
+                               title.position = "top", title.hjust = 0.5)) +
+  labs(title = "Distribución de viviendas tipo casa (%)",
+       subtitle = "Zona urbana del Gran Santiago por zona censal",
+       caption = "Fuente: Censo 2017, elaboración propia") +
+  theme_joaquín()
+
+p_deptos <- ggplot(sf_viv) +
+  geom_sf(aes(fill = pct_deptos),
+          color = alpha("white", 0.6), linewidth = 0.15) +
+  geom_sf(data = comunas_clip, fill = NA,
+          color = "grey25", linewidth = 0.45) +
+  coord_sf(xlim = xlim_zoom, ylim = ylim_zoom, expand = FALSE,
+           label_graticule = "SW", label_axes = "SW") +
+  scale_fill_gradientn(
+    colors = pal_blues,
+    limits = c(0, 100),       # ← fuerza el rango de 0–100%
+    oob = squish,             # ← evita cortes si hay valores fuera
+    name = "% de viviendas tipo departamento",
+    breaks = c(0, 25, 50, 75, 100),   # ← asegura que aparezca 100%
+    labels = label_number(accuracy = 1, decimal.mark = ",")
+  ) +
+  guides(fill = guide_colorbar(barheight = unit(120, "pt"),
+                               title.position = "top", title.hjust = 0.5)) +
+  labs(title = "Distribución de viviendas tipo departamento (%)",
+       subtitle = "Zona urbana del Gran Santiago por zona censal",
+       caption = "Fuente: Censo 2017, elaboración propia") +
+  theme_joaquín()
+
+ggsave("mapa_viviendas_tipo_casa.png", p_casas, width = 9, height = 7, dpi = 300)
+ggsave("mapa_viviendas_tipo_departamento.png", p_deptos, width = 9, height = 7, dpi = 300)
+
+print(p_casas)
+print(p_deptos)
+```
+
+Los siguientes mapas ilustran la distribución de las tipologías habitacionales predominantes, casas y departamentos, dentro del área urbana del Gran Santiago. En el primer caso, el mapa de viviendas tipo casa muestra una fuerte presencia en las comunas periféricas y de expansión, como La Pintana, Maipú, Pudahuel, San Bernardo y Quilicura, donde el tejido urbano responde a lógicas de vivienda unifamiliar y lotes amplios.
+
+En contraste, el mapa de viviendas tipo departamento revela una concentración en el eje oriente y centro de la ciudad, especialmente en Santiago Centro, Ñuñoa, Providencia y Las Condes, reflejando el proceso de densificación vertical característico de las últimas dos décadas.
+
+Esta diferencia en la morfología urbana marca también una diversidad en las oportunidades para el emprendimiento: mientras las casas permiten destinar parte del espacio a talleres, bodegas o actividades productivas, los departamentos suelen propiciar emprendimientos de servicios o actividades digitales que no requieren un espacio físico amplio.
+
+## 3.3 Relación espacial entre emprendimiento y forma de habitar
+
+```{r mapa_biv, fig.width=13, fig.height=8, message=FALSE, warning=FALSE}
+################################################################################
+## 11) MAPAS BIVARIADOS 3×3 – Emprendedores vs Casas / Departamentos (CORREGIDO)
+################################################################################
+library(biscale)
+library(cowplot)
+
+# Base con las tres variables ya en porcentaje
+sf_bi_base <- sf_viv |>
+  dplyr::mutate(
+    empr_pct   = prop_pct,     # % emprendedores (viene de 'inter')
+    casas_pct  = pct_casas,    # % casas
+    deptos_pct = pct_deptos    # % deptos
+  )
+
+# Helper robusto: recibe nombres de columnas como strings
+make_bi <- function(sf_data, var_x, var_y, xlab, ylab, title){
+  # crear columnas canon x/y y filtrar NA/Inf
+  df_xy <- sf_data |>
+    dplyr::mutate(
+      x = .data[[var_x]],
+      y = .data[[var_y]]
+    ) |>
+    dplyr::filter(is.finite(x), is.finite(y))
+  
+  # clasificar en 3×3 cuantiles
+  sf_bi <- biscale::bi_class(
+    df_xy,
+    x = x, y = y,
+    dim = 3, style = "quantile"
+  )
+  
+  # mapa principal
+  p_map <- ggplot(sf_bi) +
+    geom_sf(aes(fill = bi_class),
+            color = scales::alpha("white", 0.6),
+            linewidth = 0.15,
+            show.legend = FALSE) +
+    geom_sf(data = comunas_clip, fill = NA,
+            color = "grey25", linewidth = 0.45) +
+    biscale::bi_scale_fill(pal = "DkBlue", dim = 3) +
+    coord_sf(xlim = xlim_zoom, ylim = ylim_zoom, expand = FALSE,
+             label_graticule = "SW", label_axes = "SW") +
+    labs(
+      title    = title,
+      subtitle = "Zona urbana del Gran Santiago por zona censal",
+      caption  = "Clasificación bivariada (cuantiles 3×3) • Fuente: CASEN (rakeR) + Censo 2017"
+    ) +
+    theme_joaquín()
+  
+  # leyenda (texto + overlay de flecha horizontal)
+  p_leg <- biscale::bi_legend(
+    pal = "DkBlue", dim = 3,
+    xlab = xlab,                                  # ← sin flecha aquí
+    ylab = paste0("\u2191 ", ylab),               # ↑ mantiene vertical
+    size = 10
+  ) +
+    theme_minimal(base_size = 10) +
+    theme(
+      panel.grid   = element_blank(),
+      axis.text    = element_blank(),
+      axis.ticks   = element_blank(),
+      axis.title.x = element_text(margin = margin(t = 6)),
+      axis.title.y = element_text(margin = margin(r = 6)),
+      plot.margin  = margin(6, 6, 6, 6)
+    )
+  
+  # composición mapa + leyenda, con overlay de flecha "→" sobre la leyenda
+  composed <- cowplot::ggdraw() +
+    cowplot::draw_plot(p_map, x = 0.00, y = 0.00, width = 0.80, height = 1.00) +
+    cowplot::draw_plot(p_leg, x = 0.82, y = 0.18, width = 0.18, height = 0.28) +
+    # ⟶ Flecha añadida como etiqueta para evitar problemas de Unicode del device
+    cowplot::draw_label(
+      label = "\u2192",          # → flecha derecha
+      x = 0.82 + 0.09,           # centrada dentro del recuadro de la leyenda
+      y = 0.18 + 0.02,           # justo debajo del triángulo de la leyenda
+      hjust = 0.5, vjust = 0.5,
+      size = 10
+    )
+  
+  
+  
+  # composición mapa + leyenda
+  composed <- cowplot::ggdraw() +
+    cowplot::draw_plot(p_map, x = 0.00, y = 0.00, width = 0.80, height = 1.00) +
+    cowplot::draw_plot(p_leg, x = 0.82, y = 0.18, width = 0.18, height = 0.28)
+  
+  list(map = p_map, legend = p_leg, composed = composed)
+}
+
+# 11.1) Emprendedores vs Casas
+bi_casas <- make_bi(
+  sf_data = sf_bi_base,
+  var_x   = "empr_pct",
+  var_y   = "casas_pct",
+  xlab    = "% Emprendedores",
+  ylab    = "% Casas",
+  title   = "Bivariado: % Emprendedores vs. % Casas"
+)
+ggsave("mapa_bivariado_empr_vs_casas.png",
+       bi_casas$composed, width = 9.5, height = 7.5, dpi = 300)
+print(bi_casas$composed)
+
+# 11.2) Emprendedores vs Departamentos
+bi_deptos <- make_bi(
+  sf_data = sf_bi_base,
+  var_x   = "empr_pct",
+  var_y   = "deptos_pct",
+  xlab    = "% Emprendedores",
+  ylab    = "% Departamentos",
+  title   = "Bivariado: % Emprendedores vs. % Departamentos"
+)
+ggsave("mapa_bivariado_empr_vs_deptos.png",
+       bi_deptos$composed, width = 9.5, height = 7.5, dpi = 300)
+print(bi_deptos$composed)
+```
+
+Este análisis combina dos dimensiones, el nivel de emprendimiento y el tipo de vivienda predominante, para identificar cómo se relacionan los patrones económicos con la forma física y social del entorno urbano.
+
+En este primer modelo, que relaciona el porcentaje de emprendedores con la proporción de viviendas tipo casa, se observa una coincidencia importante en comunas como Pedro Aguirre Cerda, San Joaquín, La Reina y sectores de Quinta Normal. Estas zonas, de carácter residencial consolidado y baja altura, presentan una morfología urbana que favorece el uso mixto del espacio, donde el hogar puede funcionar también como lugar de trabajo o comercio.
+
+Las viviendas unifamiliares con patios, antejardines o ampliaciones permiten instalar pequeños talleres, minimarkets, locales de comida, peluquerías o servicios técnicos, sin necesidad de grandes inversiones. Este tipo de entorno fomenta una economía barrial basada en la proximidad, la confianza y el autoempleo, donde las redes vecinales tienen un rol clave para sostener la actividad. En el fondo, la estructura del barrio acompaña al emprendimiento, facilitando la adaptación de los espacios domésticos a actividades productivas o de servicio.
+
+Por otro lado, cuando se observa el modelo emprendedores–departamentos, el patrón cambia: las mayores concentraciones se ubican en Santiago Centro, Providencia, Las Condes y Vitacura, donde predominan edificios de departamentos, alta densidad y mejor accesibilidad. En estos lugares, el emprendimiento se orienta más hacia servicios profesionales, coworks, estudios creativos, cafeterías y oficinas de primer piso. La morfología vertical y la alta concentración de población y equipamientos crean un entorno ideal para servicios de cercanía y consumo rápido, donde la visibilidad y el flujo de personas compensan la falta de espacio físico en los hogares.
+
+| Tipología urbana | Tipo de emprendimiento dominante | Ejemplos | Localización |
+|------------------|--------------------|------------------|------------------|
+| Casas + emprendimiento alto | Actividades productivas o logísticas locales, microemprendimientos familiares, oficios tradicionales | Talleres mecánicos, panaderías, costurerías, minimarkets, ferreterías, comidas al paso, servicios de mantención, peluquerías, reciclaje o bodegas domésticas | Sectores periféricos y residenciales consolidados (PAC, San Joaquín, La Reina, Quinta Normal, La Cisterna) |
+| Departamentos + emprendimiento alto | Servicios profesionales, comercio de cercanía, emprendimientos digitales o de atención al público | Oficinas de primer piso, estudios contables o de diseño, coworks, cafeterías, delivery de comida, almacenes de barrio, barberías o boutiques | Sectores centrales y del oriente metropolitano (Santiago, Providencia, Las Condes, Vitacura) |
+
+En síntesis, la relación entre emprendimiento y tipo de vivienda refleja cómo la forma urbana condiciona las oportunidades económicas a escala barrial. Las zonas con predominio de casas promueven una economía más arraigada al territorio, vinculada al trabajo familiar y al uso cotidiano del espacio residencial, mientras que las áreas verticalizadas orientan el emprendimiento hacia servicios y actividades de atención directa. Esta dualidad evidencia que el emprendimiento en el Gran Santiago no solo depende de factores socioeconómicos, sino también de la estructura física y funcional de la ciudad, que moldea la manera en que las personas habitan, producen y generan sustento dentro de su entorno inmediato.
+
+------------------------------------------------------------------------
+
+# Conclusiones
+
+El análisis evidenció que el emprendimiento en el Gran Santiago está profundamente vinculado con la forma de habitar y la estructura física de la ciudad. Los resultados muestran que las zonas con predominio de viviendas unifamiliares concentran mayores proporciones de población emprendedora, especialmente en comunas como Pedro Aguirre Cerda, San Joaquín, La Reina o La Cisterna. En estos sectores, el espacio doméstico se adapta al trabajo productivo, dando lugar a una economía barrial basada en la cercanía, la autogestión y la resiliencia frente a la falta de empleo formal.
+
+Por otro lado, los sectores centrales y de alta densidad como Santiago Centro, Providencia y Las Condes, presentan un patrón distinto, donde el emprendimiento se orienta hacia servicios profesionales, comercio de atención directa y actividades creativas. En estos casos, la morfología vertical y la concentración de población generan entornos favorables para negocios de visibilidad urbana, como oficinas de primer piso, coworks o cafeterías.
+
+La aplicación de la microsimulación resultó fundamental para estimar la distribución territorial del emprendimiento a nivel censal, integrando la información socioeconómica de la CASEN 2022 con la estructura demográfica del Censo 2017. Este enfoque permitió representar de forma más realista el fenómeno a escala local, incluso en territorios donde no existen datos directos de emprendimiento. Asimismo, la imputación ligera por regresión lineal simple de escolaridad aplicada durante el preprocesamiento contribuyó a corregir valores nulos y preservar la coherencia estadística de la muestra, mejorando la calidad y robustez del modelo.
+
+En conjunto, los hallazgos confirman que el emprendimiento urbano no depende únicamente de factores económicos, sino también de la morfología y funcionalidad del entorno habitacional. Comprender esta relación permite identificar oportunidades para el desarrollo local y diseñar estrategias de planificación que fomenten espacios mixtos y flexibles, capaces de integrar vivienda, trabajo y vida comunitaria en una ciudad más equitativa y sostenible.
